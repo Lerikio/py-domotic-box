@@ -19,6 +19,9 @@ class LogicalBloc(object):
 			self.informations_observed.remove(information)
 
 	def trigger(self):
+		# Activé par la modification des informations observées.
+		# 'code' est soit une string, soit un code object, définissant le bloc logique.
+		# Il peut modifier des informations et/ou effectuer des actions.
 		exec self.code
 
 
@@ -35,7 +38,7 @@ class Information(object):
 		self.value = value
 
 	def __setattr__(self, name, value):
-	# Override de setattr pour que, lorsque la valeur de l'information est changée, elle notifie ses observers.
+		# Override de setattr pour que, lorsque la valeur de l'information est changée, elle notifie ses observers.
 		object.__setattr__(self, name, value)
 		if name == 'value':
 			self.notify()
@@ -58,8 +61,15 @@ class Information(object):
 #---------------------------------------------------------------
 
 class Action(object):
+	# Permet de définir les actions possibles sur les différents devices controllés par la centrale.
 
-
-	def __init__(self, name, description):
+	def __init__(self, name, description, range):
 		self.name = name
 		self.description = description
+		self.value_range = range
+
+	def setValue(value):
+		if value in self.range_value:
+			pass # Envoyer l'ordre au driver correspondant
+		else
+			print value + "n'appartient pas aux valeurs possibles de cette action : " + range_value
