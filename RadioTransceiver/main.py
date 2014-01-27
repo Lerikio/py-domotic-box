@@ -19,4 +19,6 @@ def convertToSequence(binSequence):
 
 
 binSequence = '0000 0000 0000 0000 0000 0000 1101 0000'
-rxtx.addToWriteBuffer(convertToSequence(binSequence))
+
+for i in range(200):
+	rxtx.addToWriteBuffer(convertToSequence(binSequence))
