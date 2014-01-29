@@ -60,16 +60,33 @@ class Information(object):
 
 #---------------------------------------------------------------
 
-class Action(object):
-	# Permet de définir les actions possibles sur les différents devices controllés par la centrale.
+class Actuator(object):
+	# CLasse Abstraite : ne devrait jamais être instanciée directement
 
-	def __init__(self, name, description, range):
+	# Définition générale d'un actionneur. Permet d'utiliser des actions sur celui-ci, qui sont des méthodes rajoutées par le driver.
+	# La liste des actions possibles de l'actionneur est disponible dans son attribut "actions"
+
+	def __init__(self, name, description, driver):
 		self.name = name
 		self.description = description
-		self.value_range = range
+		self.driver = driver
+		self.actions = []
 
-	def setValue(value):
-		if value in self.range_value:
-			pass # Envoyer l'ordre au driver correspondant
-		else
-			print value + "n'appartient pas aux valeurs possibles de cette action : " + range_value
+	def add_action(self, name, description, driver_ID):
+		new_action = Action(name, description, self, driver_ID)
+		self.actions.append(new_action)
+
+#---------------------------------------------------------------
+
+class Action(object):
+	# Action d'un actionneur
+
+	def __init__(self, name, description, actuator, driver_ID):
+		self.name = name
+		self.description = description
+		self.actuator = actuator
+		self.driver = self.actuator.driver
+		self.ID = driver_ID
+
+	def execute():
+		self.driver.execute(self.ID)
