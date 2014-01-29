@@ -1,4 +1,3 @@
-coding=utf8
 from src.logical_core import *
 from src.driver_first_try import Driver
 
