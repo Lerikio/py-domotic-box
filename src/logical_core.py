@@ -1,4 +1,4 @@
-coding=<utf8>
+coding=utf8
 class LogicalBloc(object):
 	# Bloc de base du noyau logiciel.
 	# Défini par les informations reçues en entrées et le code qu'il execute lorsque ces informations sont modifiées.
