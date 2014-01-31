@@ -46,8 +46,5 @@ class RadioTransmitter(Thread):
         t = threading.Timer(toSend[1]/1000, self.processBuffer)
         t.start()
 
-class RadioReceptor(Thread):
-
-    
-        
+#class RadioReceptor(Thread): 
     

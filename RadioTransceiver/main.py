@@ -13,7 +13,7 @@ def convertToSequence(binSequence):
 	sequence.extend(start)
 	for char in binSequence:
 		if char == '1': sequence.extend(one)
-		else if char == '0': sequence.extend(zero)
+		elif char == '0': sequence.extend(zero)
 	sequence.extend(end)
 	return sequence
 

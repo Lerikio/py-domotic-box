@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 class LogicalBloc(object):
 	# Bloc de base du noyau logiciel.
 	# Défini par les informations reçues en entrées et le code qu'il execute lorsque ces informations sont modifiées.
@@ -14,7 +16,7 @@ class LogicalBloc(object):
 			information.attach(self)
 
 	def remove_information(self, information):
-		if information in self.informations_observed
+		if information in self.informations_observed:
 			information.detach(self)
 			self.informations_observed.remove(information)
 
@@ -88,5 +90,5 @@ class Action(object):
 		self.driver = self.actuator.driver
 		self.ID = driver_ID
 
-	def execute():
+	def execute(self):
 		self.driver.execute(self.ID)
