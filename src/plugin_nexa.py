@@ -12,9 +12,9 @@ from core_classes import *
 # Fonction accessible dès l'importation du module Python.
 # Elle permet d'identifier le plugin qui va être chargé 
 # et d'adapter ainsi son chargement en conséquence.
-PLUGIN_TYPE = 'protocol'
-PLUGIN_NAME = 'nexa'
-PLUGIN_DESCRIPTION = 'Plugin de type protocol permettant au coeur de gérer des périphériques Nexa.'
+PLUGIN_TYPE = u'protocol'
+PLUGIN_NAME = u'nexa'
+PLUGIN_DESCRIPTION = u'Plugin de type protocol permettant au coeur de gérer des périphériques Nexa.'
 
 def introduce_plugin():
 	return {'type' : PLUGIN_TYPE, 'name': PLUGIN_NAME, 'description' : PLUGIN_DESCRIPTION} 

@@ -16,8 +16,8 @@ import time # Pour pouvoir ajouter un timestamp à la réception d'une informati
 # Elle permet d'offrir une interface minimaliste commune à tous les périphériques
 class Device(object):
 	
-	device_name
-	device_brand
+	#device_name
+	#device_brand
 	
 	def __init__(self, name, location, driver):
 		self.name = name
@@ -54,7 +54,7 @@ class Sensor(Device):
 		self.informations.append(Information(newValue))
 
 	# Permet de présenter le type d'informations mises à disposition par le capteur au core
-	def introduce_informations(self):
+	# def introduce_informations(self):
 
 #---------------------------------------------------------------
 # Classes de base liées aux actions et informations
@@ -89,7 +89,7 @@ class Information(object):
 		self._observers = []
 	
 	def update(self, newValue):
-		this.values.append((newValue, time.time())
+		this.values.append((newValue, time.time()))
 		self.notify()
 
 	def attach(self, observer):

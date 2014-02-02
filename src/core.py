@@ -15,17 +15,21 @@ class Core:
 	# Charge un plugin, c'est-à-dire détecte le type de plugin (modem ou protocole dans un premier temps)
 	# puis charge ce qu'apporte ce plugin (nouveaux périphériques...)
 	def load_plugin(self, plugin_path):
-		plugin = __import__(plugin_path)
-		if plugin not in plugins:
-			if(plugin.introduce_plugin().type == 'protocol'):
+		plugin = __import__(plugin_path, fromlist=['o'])
+		if plugin not in self.plugins:
+			print plugin.introduce_plugin()
+			if(plugin.introduce_plugin()['type'] == 'protocol'):
 				print "Chargement d'un plugin de protocole"
-				drivers.append(plugin.Driver())
-				print "Le driver suivant vient d'être chargé : " + drivers[len(drivers)]
-				newDevices = driver.get_devices()
-				print "Les nouvelles classes de périphériques suivantes sont disponibles : " + newDevices
+				self.drivers.append(plugin.Driver())
+				print "Le driver suivant vient d'être chargé : "
+				print self.drivers[len(self.drivers)-1]
+				newDevices = self.drivers[len(self.drivers)-1].get_devices()
+				print "Les nouvelles classes de périphériques suivantes sont disponibles : "
+				print newDevices
 			else:
 				print "Ce n'est pas un plugin de protocole"
 		else:
 			print "Ce plugin a déjà été chargé."
 
-	def add_device():
+	# def add_device():
+                

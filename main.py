@@ -1,6 +1,5 @@
-from src.logical_core import *
-from src.driver_first_try import Driver
+import src.core
 
-new_driver = Driver()
-for action in new_driver.actuator.actions:
-	action.execute()
+core = src.core.Core()
+core.load_plugin('src.plugin_nexa')
+input("attendre...")
