@@ -2,6 +2,9 @@
 
 import time # Pour pouvoir ajouter un timestamp à la réception d'une information 
 
+def new_func(test):
+	print "hohe"
+
 #---------------------------------------------------------------
 # Package core_classes
 # Il contient toutes les classes de base de la centrale
