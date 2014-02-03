@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from core_classes import *
-
 # Classe gérant l'ensemble des plugins, des périphériques, des informations et des actions
 # Elle permet de charger de nouveaux plugins, de configurer de nouveaux périphériques,
 # de gérer la détection d'un nouveau périphérique que l'utilisateur devra configurer
-class Core:
+class Kernel:
 
 	def __init__(self):
 		self.plugins = []

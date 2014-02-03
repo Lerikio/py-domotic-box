@@ -12,50 +12,113 @@ from core_classes import *
 # Fonction accessible dès l'importation du module Python.
 # Elle permet d'identifier le plugin qui va être chargé 
 # et d'adapter ainsi son chargement en conséquence.
-PLUGIN_TYPE = u'protocol'
-PLUGIN_NAME = u'nexa'
-PLUGIN_DESCRIPTION = u'Plugin de type protocol permettant au coeur de gérer des périphériques Nexa.'
+PLUGIN_TYPE = 'protocol'
+PLUGIN_NAME = 'nexa'
+PLUGIN_DESCRIPTION = 'Plugin de type protocol permettant au coeur de gérer des périphériques Nexa.'
+PLUGIN_CLASS = Driver
 
 def introduce_plugin():
-	return {'type' : PLUGIN_TYPE, 'name': PLUGIN_NAME, 'description' : PLUGIN_DESCRIPTION} 
-
+	return {
+		'type' : PLUGIN_TYPE, 
+		'name' : PLUGIN_NAME, 
+		'description' : PLUGIN_DESCRIPTION,
+		'class' : PLUGIN_CLASS} 
 
 # Classe instanciée une seule fois par le coeur et gérant 
 # toutes les requêtes concernant le protocole Nexa
 class Driver():
 
 	#---------------------------------------------------------------
-	# Interface avec le core 
+	# Interface avec le kernel 
 	#---------------------------------------------------------------
 
 	def __init__(self):
+		# Jusqu'à ce qu'on l'ait configuré, le driver n'a pas encore de modem
 		self.modem = None
 
-		# TODO Définir la façon dont on définit la structure d'un message
-		self.messageStructure = []
+		# On définit la structure de messages radio propre au protocole nexa 
+		self.message_structure = {
+								'baselength' : 250,
+								'symbols' : {
+										'start' : [1,10],
+										'one' : [1,5,1,1],
+										'zero' : [1,1,1,5],
+										'end' : [1,30]
+										},
+								'structure' : ['start'] + [('one','zero') for i in range(32)] + ['end']
+								}
 
 		# Ce sont les nouveaux périphériques qu'on propose au core
-		self.handledDeviceTypes = (NexaSwitch, NexaVirtualRemote)
+		self.handled_device_types = (NexaSwitch, NexaVirtualRemote)
 
-	def get_devices(self):
-		return self.handledDeviceTypes
-
-	def add_device(self, device_type, arguments):
-		# TODO Vérifier que les bons arguments sont fournis
-		new_device = device_type(arguments)
-		this.devices.append(newDevice)
-		return new_device
+		# Liste des périphériques connectés gérés par ce driver
+		self.devices = []
+		
+		# Paramètres à fournir pour configurer le driver
+		self.settings = {'modem' : {'name' : 'modem', 
+								'type' : '433_radio_modem',
+								'description' : 'Modem radio à utiliser avec ce driver'}}
+		
+		# Liste des périphériques potentiellement gérables par ce driver
+		self.handled_devices = [NexaSwitch, NexaVirtualRemote]
 	
-	def set_modem(self, modem):
-		# TODO Ajouter une vérification de compatibilité du modem proposé
+	def get_set_arguments(self):
+		""" Returns the arguments needed to set the driver.	"""
+		return self.settings
+	
+	def set(self, settings):
+		""" Sets the driver. Returns True if the setting was a success. 
+		Otherwise, it returns a tuple containing the setting which caused 
+		the issue.
+		
+		Keyword arguments:
+		settings -- the dictionary of settings used to set the driver. Its 
+		format is determined by the function get_set_arguments.
+		
+		"""
+		
+		# On vérifie que les arguments donnés sont valides
+		retour = True
+		if settings['modem'].get_modem_infos() == 'radio_433': 
+			self.modem = settings['modem']
+			# On spécifie au modem la structure de message qu'on attend au modem 
+			# pour qu'il nous transmette ce qui est nous est adressé
+			self.modem.attach(self, self.message_structure)
+		else:
+			retour = ('modem', "Le modem specifié n'est pas du bon type"))
+	
+		return retour
 
-		# On va pouvoir envoyer des données par notre modem
-		self.modem = modem 
+	def get_handled_devices(self):
+		""" Returns a list of dictionaries describing the device handled 
+		by the present driver. It doesn't return a direct reference to 
+		the device classes to ensure that the driver is the only one being 
+		able to instantiate a device (through the add_device method).
 		
-		# On spécifie au modem la structure de message qu'on attend au modem 
-		# pour qu'il nous transmette ce qui est nous est adressé
-		self.modem.attach(self, messageStructure) 
-		
+		"""
+		# On ne fournit pas directement la classe pour que le driver reste
+		# le seul à pouvoir instancier des périphériques
+		return map(Device.get_device_info, self.handled_devices)
+
+	def add_device(self, device_id, arguments):
+		""" Proxy method used to instantiate a new device. Returns True
+		if the instantiation has succeeded, otherwise the arguments which
+		caused an issue.
+		 
+		"""
+
+		retour = True
+		for Dev in self.handled_devices:
+			if Dev.get_device_info()['device_id'] == device_id:
+				# TODO Vérifier que les bons arguments sont fournis
+				# avec une fonction générique (ce problème se pose 
+				# souvent dans le programme)
+				new_device = Dev(arguments)
+				self.devices.append(new_device)
+				
+	def get_devices(self):
+		return self.devices
+
 	#---------------------------------------------------------------
 	# Interface avec le modem 
 	#---------------------------------------------------------------

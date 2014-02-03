@@ -2,9 +2,6 @@
 
 import time # Pour pouvoir ajouter un timestamp à la réception d'une information 
 
-def new_func(test):
-	print "hohe"
-
 #---------------------------------------------------------------
 # Package core_classes
 # Il contient toutes les classes de base de la centrale
@@ -19,15 +16,20 @@ def new_func(test):
 # Elle permet d'offrir une interface minimaliste commune à tous les périphériques
 class Device(object):
 	
-	#device_name
-	#device_brand
+	device_name = ""
+	device_brand = ""
 	
 	def __init__(self, name, location, driver):
 		self.name = name
 		self.location = location
 		self.driver = driver
 
-
+	@classmethod
+	def get_device_info(cls):
+		return {
+			'name' : cls.device_name,
+			'brand' : cls.device_brand}
+			
 # Un périphérique concret de type actionneur implémente cette classe.
 # Les actions sont des attributs de classe, rendant leur accès possible
 # indépendamment d'une instanciation du périphérique
