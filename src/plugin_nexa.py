@@ -184,7 +184,7 @@ class Driver():
 #---------------------------------------------------------------
 
 # Interrupteur Nexa classique on/off
-class NexaSwitch(Sensor):
+class NexaSwitch(Device):
 
 	# Ce sont les attributs qui caractérisent ce type de périphérique
 	device_infos = {
@@ -209,11 +209,11 @@ class NexaSwitch(Sensor):
 		self.group_code = None
 		self.unit_code = None
 				
-		self.informations = []
-		self.informations.append(Information(
-											"Etat", 
-											"Décrit l'état de l'interrupteur", 
-											("state", ("on", "off"))))
+		self.informations = {
+							'command' : Information(
+												"Etat de l'interrupteur",
+												"Décrit l'état de l'interrupteur",
+												("state", ("on", "off")))}
 		
 	def set(self, driver, args):
 		# TODO: vérifier la cohérence des arguments fournis avec ce qui a été demandé
@@ -226,10 +226,20 @@ class NexaSwitch(Sensor):
 		self.group_code = args['group_code']
 		self.unit_code = args['unit_code']
 
+	def update(self, new_command):
+		retour = True
+		if new_command == 1:
+			self.informations['command'].update("on")
+		else if new_command == 0:
+			self.informations['command'].update("off")
+		else:
+			retour = "La nouvelle commande n'était ni un 1 ni un 0."
+		return retour
+
 #---------------------------------------------------------------
 
 # Permet de simuler une télécommande Nexa 
-class NexaVirtualRemote(Actuator):
+class NexaVirtualRemote(Device):
 
 	# Ce sont les attributs qui caractérisent ce type de périphérique
 	device_infos = {
