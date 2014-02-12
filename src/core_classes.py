@@ -30,6 +30,12 @@ class Device(object):
 			'name' : cls.device_name,
 			'brand' : cls.device_brand}
 
+	def is_a_sensor(self):
+		return not self.informations
+
+	def is_an_actuator(self):
+		return not self.actions
+
 # TODO: les classes Actuator et Sensor n'ont en fait pas de raison
 # d'être, à vérifier et les virer
 
