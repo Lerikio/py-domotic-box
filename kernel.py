@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+import os
+import importlib
+
 class Kernel:
 	""" Gathers every plugin installed. 
 	It centralizes every driver, modem, automaton and devices 
@@ -22,21 +25,47 @@ class Kernel:
 		self.automatons = []
 		self.interfaces = []
 		self.devices = []
-		
+	
+	def load_imports(self, path):
+		files = os.listdir(path)
+		print files
+		imps = []
+	
+		for i in range(len(files)):
+			name = files[i].split('.')
+			if len(name) > 1:
+				if name[1] == 'py' and name[0] != '__init__':
+					name = name[0]
+					imps.append(name)
+	
+		file = open(path+'__init__.py','w')
+	
+		toWrite = '__all__ = '+str(imps)
+	
+		file.write(toWrite)
+		file.close()
+
 	def load_plugins(self):
 		""" Loads all plugins available in the plugin package/subdirectory. 
 		If a plugin has already been loaded, it is ignored.
 		
 		"""
-		available_plugins = __import__('plugins', fromlist=['o'])
+
+		available_plugins = []
+		for file in os.listdir('plugins'):
+			if file == '__init__.py' or file[-3:] != '.py' or file[0:6] != 'plugin':
+				continue
+			module = importlib.import_module('plugins.'+file[:-3], package='plugins')
+			available_plugins += [module]
+
 		for plugin in available_plugins:
 			if plugin not in self.plugins:
 				self.plugins.append(plugin)
 				if plugin.PLUGIN_TYPE == 'protocol':
 					self.drivers.append(plugin.Driver())
-				else if plugin.PLUGIN_TYPE == 'modem':
+				elif plugin.PLUGIN_TYPE == 'modem':
 					self.modems.append(plugin.Modem())
-				else if plugin.PLUGIN_TYPE == 'automaton':
+				elif plugin.PLUGIN_TYPE == 'automaton':
 					self.automatons.append(plugin.Automaton())
-				else if plugin.PLUGIN_TYPE == 'interface':
+				elif plugin.PLUGIN_TYPE == 'interface':
 					self.interfaces.append(plugin.Interface())

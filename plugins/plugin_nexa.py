@@ -158,28 +158,39 @@ class Driver():
 	#---------------------------------------------------------------
 
 	def send_command(self, device, command):
+		error_code = True
 		
-		def from_int_to_bitfield(n):
-			return [1 if digit=='1' else 0 for digit in bin(n)[2:]]
-		
-		sequence = from_int_to_bitfield(device.house_code)
-		sequence.append(device.group_code)
-		sequence.append(command)
-		sequence.append(from_int_to_bitfield(device.unit_code))
-		
-		# TODO: transformer le bitfield séquence en une réelle 
-		# séquence radio de type (pulse, durée du pulse) à 
-		# envoyer au modem radio
-		# Pour cela, utiliser les conventions données dans 
-		# self.message_structure
-		radio_sequence = []
+		symbols = ['1' + 10*'0',
+				'10000010',
+				'10100000',
+				'1' + 40*'0']
 
-		result = True
-		if(self.modem != None):
-			self.modem.send(radio_sequence)
-		else:
-			result = ("Il faut définir un modem radio 433 pour ce driver !")
-		return result
+		bin_house_code = (26-len(bin(device.house_code)[2:]))*'0' + bin(device.house_code)[2:]
+		bin_group_code = bin(device.group_code)[2:]
+		bin_command = bin(command)[2:]
+		bin_unit_code = (4-len(bin(device.unit_code)[2:]))*'0' + bin(device.unit_code)[2:]
+	
+		nexa_sequence = bin_house_code + bin_group_code + bin_command + bin_unit_code
+		
+		coded_sequence = [0]
+		for char in nexa_sequence:
+			if char == '1':
+				coded_sequence += [1]
+			else:
+				coded_sequence += [2]
+		coded_sequence += [3]
+		
+		call_arg = [16,250] + symbols + [coded_sequence]
+		self.modem.send_sequence(call_arg)
+		
+		
+# 		try:
+# 			self.modem.send_sequence([16,250].extend(symbols) + coded_sequence)
+# 		except:
+# 			print "problème dans send_sequence"
+# 			error_code = False
+			
+		return error_code
 
 #---------------------------------------------------------------
 
@@ -230,7 +241,7 @@ class NexaSwitch(Device):
 		retour = True
 		if new_command == 1:
 			self.informations['command'].update("on")
-		else if new_command == 0:
+		elif new_command == 0:
 			self.informations['command'].update("off")
 		else:
 			retour = "La nouvelle commande n'était ni un 1 ni un 0."
@@ -287,8 +298,9 @@ class NexaVirtualRemote(Device):
 		self.group_code = args['group_code']
 		self.unit_code = args['unit_code']
 
-	def switch_on(self):
+	def switch_on(self, args):
+		print"switch_on"
 		self.driver.send_command(self, 1)
 
-	def switch_off(self):
+	def switch_off(self, args):
 		self.driver.send_command(self, 0)

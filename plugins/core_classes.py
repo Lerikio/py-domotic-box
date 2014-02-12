@@ -89,6 +89,7 @@ class Action(object):
 		self.arguments_structure = arguments_structure
 
 	def execute(self, arguments):
+		print "execute"
 		# TODO vérifier que la structure des arguments est respectée 
 		self.method(arguments)
 
