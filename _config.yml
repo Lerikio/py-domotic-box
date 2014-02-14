@@ -1,7 +1,3 @@
-name: my new Jekyll site
-safe: true
-lsi: false
-pygments: true
-baseurl: http://rvvdomoticbox.github.io/RVVDomoticBox/
+name: Your New Jekyll Site
 markdown: redcarpet
-permalink: /docs/:title.html
+pygments: true
