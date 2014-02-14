@@ -4,6 +4,7 @@ import bitarray
 import serial
 import math
 import time 
+import threading
 
 PLUGIN_TYPE = 'modem'
 """ Module variable allowing the Kernel to determine the type
@@ -46,7 +47,7 @@ class Modem():
 		""" Returns the  
 		"""
 		return self.modem_type
-	
+			
 	def set(self, args):
 		""" Sets the serial communication used by the domotic 
 		box to communicate with the Arduino. If the given COM
@@ -65,14 +66,32 @@ class Modem():
 		try:
 			new_serial.open()
 		except serial.SerialException:
-			print "probleme avec le port com"
+			print "Le port COM spécifié est déjà utilisé !"
 			methodResult = False
 		else:
-			print "com port ok !"
 			self.COM_port = args['COM_port']
 			self.serial = new_serial
-			print self.serial
+			print "Port " + self.serial.name + " ouvert et fonctionnel !"
 		
+		class radioSequenceReception(threading.Thread):
+			def __init__(self, processing_method, serial):
+				threading.Thread.__init__(self)
+				self.processing_method = processing_method
+				self.serial = serial
+			def run(self):
+				while True:
+					sequence = []
+					if self.serial.inWaiting() > 0:
+						byte = self.serial.read()
+						if len(byte) > 0:
+							while ord(byte) != 255:
+								byte = self.serial.read()
+								sequence.append(ord(byte))
+							self.processing_method(sequence)
+							
+		radio_sequence_reception = radioSequenceReception(self.identify_sequence, self.serial)
+		radio_sequence_reception.start()
+				
 		return methodResult
 	
 	def format_arg(self, binary):
@@ -124,10 +143,28 @@ class Modem():
 			time.sleep(0.1)
 				#print bin(ord(byte))
 
-	def attach(self, observer, message_structure):
-		if not observer in self.observers:
-			self.observers.append((observer, message_structure))
-		self.register_new_message_structure(message_structure)
+	def identify_sequence(self, sequence):
+		start_position = 0
+		for i, duration in enumerate(sequence):
+			for obs in self.observers:
+				bitOkay = False
+				for pos in obs['structure'][obs['i']]:
+					if pos[0] < duration*32 < pos[1]:
+						bitOkay = True
+				#print bitOkay
+				if bitOkay:
+					obs['i'] += 1
+				else:
+					obs['i'] = 0
+					start_position = i
+				if obs['i'] == obs['length']:
+					obs['method'](sequence[start_position+1:start_position+1+obs['length']])
+					obs['i'] = 0
+
+	def attach(self, observer_dictionary):
+		if not observer_dictionary in self.observers:
+			self.observers.append(observer_dictionary)
+		#self.register_new_message_structure(message_structure)
 			
 	def register_new_message_structure(self, message_structure):
 		""" Signal to the hardware part that a new set of

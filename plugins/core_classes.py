@@ -89,7 +89,7 @@ class Action(object):
 		self.arguments_structure = arguments_structure
 
 	def execute(self, arguments):
-		print "execute"
+		#print "execute"
 		# TODO vérifier que la structure des arguments est respectée 
 		self.method(arguments)
 
@@ -97,10 +97,10 @@ class Information(object):
 	# Utilisées comme entrées des blocs logiques, les informations sont des "Observables".
 	# Lorsqu'une information est modifiée, elle "notifie" tous ses "Observers" pour qu'ils effectuent certaines actions.
 
-	def __init__(self, name, description, info_type, info_range):
+	def __init__(self, name, description, info_range):
 		self.name = name
 		self.description = description
-		self.type = info_type
+		#self.type = info_type
 		self.range = info_range
 		self.values = []
 		self._observers = []

@@ -25,12 +25,16 @@ class Driver():
 	# Interface avec le kernel 
 	#---------------------------------------------------------------
 
-	def __init__(self):
+	def __init__(self, kernel):
+		self.kernel = kernel
+		
 		# Jusqu'à ce qu'on l'ait configuré, le driver n'a pas encore de modem
 		self.modem = None
 
 		# On définit la structure de messages radio propre au protocole nexa 
-		self.message_structure = {
+		self.message_structure = 4*32*[((200,300),(2000,2500))]
+		
+		{
 								'baselength' : 250,
 								'symbols' : {
 										'start' : [1,10],
@@ -76,7 +80,11 @@ class Driver():
 			self.modem = args['modem']
 			# On spécifie au modem la structure de message qu'on attend au modem 
 			# pour qu'il nous transmette ce qui est nous est adressé
-			self.modem.attach(self, self.message_structure)
+			self.modem.attach({
+							'structure' : 4*32*[[(150,350),(1000,1500)]],
+							'i' : 0,
+							'length' : 4*32,
+							'method' : self.decode_sequence})
 		else:
 			retour = ('modem', "Le modem specifié n'est pas du bon type")
 		return retour
@@ -107,6 +115,7 @@ class Driver():
 			# souvent dans le programme)
 			new_device.set(self, args)
 			self.devices.append(new_device)
+			self.kernel.devices.append(new_device)
 		else:
 			retour = ('device_id', "device_id out of range")
 		
@@ -122,37 +131,70 @@ class Driver():
 	# Reçoit une trame identifiée comme destinée à ce driver et
 	# transmise par la couche inférieure. Cela suppose que la couche la
 	# plus basse a la capacité d'identifier le protocole du message et
-	# s'adresse ainsi directement à la méthode process_message du
+	# s'adresse ainsi directement à la méthode decode_sequence du
 	# driver.
 	# La méthode doit être spécialisée pour traiter et décoder une trame Nexa
 	# Elle sera totalement rédigée quand on saura sous quelle forme le message est obtenu
-	def process_message(self, message):
+	def decode_sequence(self, sequence):
 		# TODO: Transformation de ce qui est reçu du modem en message de 32 bits
 		# Transformation d'un tableau de bits en entiers
-		def from_bitfield_to_int(bitfield):
-			return sum([i*2**(len(bitfield)-1-idi) for idi, i in enumerate(bitfield)])
+		#print len(sequence)
+		#print sequence
 		
-		house_code = from_bitfield_to_int(message[0:26])
-		group_code = message[26]
-		command = message[27]
-		unit_code = from_bitfield_to_int(message[28:32])
+		def is_short(duration):
+			return True if (0 < duration*32 < 800) else False
 		
-		device_found = False
-		for device in self.devices:
-			if device.house_code == house_code:
-				device_found = True
-				# TODO: Il faudrait vérifier qu'on a bien à faire à un sensor
-				device.update(command)
-		if not device_found:
-			new_device = NexaSwitch()
-			new_device.set(self, {
-								'name' : "New Nexa Switch",
-								'description' : "A new Nexa Switch has been detected and added to your devices.",
-								'location' : "Specify a location.",
-								'house_code' : house_code,
-								'group_code' : group_code,
-								'unit_code' : unit_code})
-			self.devices.append(new_device)
+		def is_long(duration):
+			return True if (800 < duration*32 < 2000) else False
+		
+		for index in range(len(sequence)):
+			if is_short(sequence[index]):
+				sequence[index] = 'short'
+			else:
+				sequence[index] = 'long'
+		#print sequence
+		
+		abort = False
+		temp_list = [0,0,0,0]
+		nexa_sequence = []
+		for j in range(len(sequence)/4):
+			for i in range(4):
+				temp_list[i] = sequence.pop(0)
+			
+			#print temp_list
+			if temp_list == ['short', 'long', 'short', 'short']:
+				nexa_sequence += [1]
+			elif temp_list == ['short', 'short', 'short', 'long']:
+				nexa_sequence += [0]
+			else:
+				abort = True
+		
+		if not abort:
+			def from_bitfield_to_int(bitfield):
+				return sum([i*2**(len(bitfield)-1-idi) for idi, i in enumerate(bitfield)])
+			
+			house_code = from_bitfield_to_int(nexa_sequence[0:26])
+			group_code = nexa_sequence[26]
+			command = nexa_sequence[27]
+			unit_code = from_bitfield_to_int(nexa_sequence[28:32])
+			
+			device_found = False
+			for device in self.devices:
+				if device.house_code == house_code and device.unit_code == unit_code:
+					device_found = True
+					# TODO: Il faudrait vérifier qu'on a bien à faire à un sensor
+					device.update(command)
+			if not device_found:
+				new_device = NexaSwitch()
+				new_device.set(self, {
+									'name' : "New Nexa Switch",
+									'description' : "A new Nexa Switch has been detected and added to your devices.",
+									'location' : "Specify a location.",
+									'house_code' : house_code,
+									'group_code' : group_code,
+									'unit_code' : unit_code})
+				self.devices.append(new_device)
+				self.kernel.devices.append(new_device)
 	#---------------------------------------------------------------
 	# Interface avec les devices 
 	#---------------------------------------------------------------
@@ -210,7 +252,7 @@ class NexaSwitch(Device):
 							'group_code' : ('integer', (0,1)),
 							'unit_code' : ('integer', (0,15))}}
 
-	def __init__(self, name, description, location, house_code, group_code, unit_code):
+	def __init__(self):
 		self.name = None
 		self.description = None
 		self.location = None
@@ -219,12 +261,32 @@ class NexaSwitch(Device):
 		self.house_code = None
 		self.group_code = None
 		self.unit_code = None
-				
-		self.informations = {
-							'command' : Information(
-												"Etat de l'interrupteur",
-												"Décrit l'état de l'interrupteur",
-												("state", ("on", "off")))}
+		
+		self.informations = []
+		self.informations. append(Information("Etat de l'interrupteur",
+											"Décrit l'état de l'interrupteur",
+											("state", ("on", "off"))))
+		self.actions = []
+		self.actions.append(Action(
+								"on", 
+								"appuyer sur le bouton on de la télécommande", 
+								self.switch_on, 
+								{}))
+		self.actions.append(Action(
+								"off", 
+								"appuyer sur le bouton off de la télécommande", 
+								self.switch_off, 
+								{}))
+		self.actions.append(Action(
+								"sync", 
+								"synchroniser la télécommande", 
+								self.sync, 
+								{}))
+		self.actions.append(Action(
+								"unsync", 
+								"désynchroniser la télécommande", 
+								self.unsync, 
+								{}))
 		
 	def set(self, driver, args):
 		# TODO: vérifier la cohérence des arguments fournis avec ce qui a été demandé
@@ -236,13 +298,32 @@ class NexaSwitch(Device):
 		self.house_code = args['house_code']
 		self.group_code = args['group_code']
 		self.unit_code = args['unit_code']
+		
+		#print self
 
+	def switch_on(self, args):
+		#print"switch_on"
+		self.driver.send_command(self, 1)
+
+	def switch_off(self, args):
+		self.driver.send_command(self, 0)
+	
+	def sync(self, args):
+		for i in range(5):
+			self.switch_on({})
+			time.sleep(0.1)
+	
+	def unsync(self, args):
+		for i in range(5):
+			self.switch_off({})
+			time.sleep(0.1)
+	
 	def update(self, new_command):
 		retour = True
 		if new_command == 1:
-			self.informations['command'].update("on")
+			self.informations[0].update("on")
 		elif new_command == 0:
-			self.informations['command'].update("off")
+			self.informations[0].update("off")
 		else:
 			retour = "La nouvelle commande n'était ni un 1 ni un 0."
 		return retour
@@ -275,6 +356,11 @@ class NexaVirtualRemote(Device):
 		self.group_code = None
 		self.unit_code = None
 		
+		self.informations = []
+		self.informations. append(Information("Etat de l'interrupteur",
+											"Décrit l'état de l'interrupteur",
+											("state", ("on", "off"))))
+		
 		self.actions = []
 		self.actions.append(Action(
 								"on", 
@@ -285,6 +371,16 @@ class NexaVirtualRemote(Device):
 								"off", 
 								"appuyer sur le bouton off de la télécommande", 
 								self.switch_off, 
+								{}))
+		self.actions.append(Action(
+								"sync", 
+								"synchroniser la télécommande", 
+								self.sync, 
+								{}))
+		self.actions.append(Action(
+								"unsync", 
+								"désynchroniser la télécommande", 
+								self.unsync, 
 								{}))
 		
 	def set(self, driver, args):
@@ -297,10 +393,30 @@ class NexaVirtualRemote(Device):
 		self.house_code = args['house_code']
 		self.group_code = args['group_code']
 		self.unit_code = args['unit_code']
-
+		
 	def switch_on(self, args):
-		print"switch_on"
+		#print"switch_on"
 		self.driver.send_command(self, 1)
 
 	def switch_off(self, args):
 		self.driver.send_command(self, 0)
+	
+	def sync(self, args):
+		for i in range(5):
+			self.switch_on({})
+			time.sleep(0.1)
+	
+	def unsync(self, args):
+		for i in range(5):
+			self.switch_off({})
+			time.sleep(0.1)
+	
+	def update(self, new_command):
+		retour = True
+		if new_command == 1:
+			self.informations[0].update("on")
+		elif new_command == 0:
+			self.informations[0].update("off")
+		else:
+			retour = "La nouvelle commande n'était ni un 1 ni un 0."
+		return retour

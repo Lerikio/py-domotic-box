@@ -62,7 +62,7 @@ class Kernel:
 			if plugin not in self.plugins:
 				self.plugins.append(plugin)
 				if plugin.PLUGIN_TYPE == 'protocol':
-					self.drivers.append(plugin.Driver())
+					self.drivers.append(plugin.Driver(self))
 				elif plugin.PLUGIN_TYPE == 'modem':
 					self.modems.append(plugin.Modem())
 				elif plugin.PLUGIN_TYPE == 'automaton':
