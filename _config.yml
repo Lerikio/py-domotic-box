@@ -5,4 +5,3 @@ pygments: true
 url: "http://rvvdomoticbox.github.io"
 baseurl: /RVVDomoticBox
 markdown: redcarpet
-permalink: /docs/:title.html
