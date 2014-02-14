@@ -1,8 +1,7 @@
 name: Your New Jekyll Site
-markdown: redcarpet
 safe: true
 lsi: false
 pygments: true
 baseurl: /my-site-name
-markdown: rdiscount
+markdown: redcarpet
 permalink: /docs/:title.html
