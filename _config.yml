@@ -2,6 +2,6 @@ name: Your New Jekyll Site
 safe: true
 lsi: false
 pygments: true
-baseurl: /my-site-name
+baseurl: /RVVDomoticBox
 markdown: redcarpet
 permalink: /docs/:title.html
