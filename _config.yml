@@ -1,7 +1,7 @@
-name: Your New Jekyll Site
+name: my new Jekyll site
 safe: true
 lsi: false
 pygments: true
-baseurl: /RVVDomoticBox
+baseurl: http://rvvdomoticbox.github.io/RVVDomoticBox/
 markdown: redcarpet
 permalink: /docs/:title.html
