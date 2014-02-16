@@ -19,9 +19,9 @@
           <div class="header">
             <h1 class="title"><a href="{{ site.baseurl }}/">{{ site.name }}</a></h1>
             <a class="extra {% if page.overview %}current{% endif %}" href="{{ site.baseurl }}/">overview</a>
-			<a class="extra {% if page.log %}current{% endif %}" href="{{ site.baseurl }}/logs/">log</a>
-			<a class="extra {% if page.wiki %}current{% endif %}" href="{{ site.baseurl }}/wiki/">wiki</a>
-			<a class="extra {% if page.doc %}current{% endif %}" href="{{ site.baseurl }}/docs/">doc</a>
+			<a class="extra {% if page.author or  page.url contains '/logs/'%}current{% endif %}" href="{{ site.baseurl }}/logs/">logs</a>
+			<a class="extra {% if page.url contains '/wiki/' %}current{% endif %}" href="{{ site.baseurl }}/wiki/">wiki</a>
+			<a class="extra {% if page.url contains '/docs/' %}current{% endif %}" href="{{ site.baseurl }}/docs/">docs</a>
           </div>
 
           {{ content }}
