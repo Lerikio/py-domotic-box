@@ -90,6 +90,11 @@ a:visited { color: #a0a; }
   color: #000;
 }
 
+.header a.current {
+  color: #000;
+  margin-left: 1em;
+}
+
 .meta {
   color: #aaa;
 }
