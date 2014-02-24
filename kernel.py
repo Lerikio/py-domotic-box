@@ -68,4 +68,4 @@ class Kernel:
 				elif plugin.PLUGIN_TYPE == 'automaton':
 					self.automatons.append(plugin.Automaton())
 				elif plugin.PLUGIN_TYPE == 'interface':
-					self.interfaces.append(plugin.Interface())
+					self.interfaces.append(plugin.Interface(self))
