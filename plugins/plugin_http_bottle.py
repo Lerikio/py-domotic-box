@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
+
 from bottle import route, run
-import jsonpickle
+from json import dumps
 
 PLUGIN_TYPE = 'interface'
 """ Module variable allowing the Kernel to determine the type
@@ -35,29 +37,53 @@ class Interface():
 		self.host = host
 		self.port = port
 
+		# Nécessaire pour l'interface
+		self.name = "Module HTTP"
+
+	# Indexes
 	@methodroute('/plugins')
 	def index_plugins(self):
-		return self.kernel.plugins
+		message = []
+		for plugin in self.kernel.plugins:
+			message.append(plugin.name)
+		return dumps(message)
 
 	@methodroute('/drivers')
 	def index_drivers(self):
-		return jsonpickle.encode(self.kernel.drivers)
+		message = []
+		for driver in self.kernel.drivers:
+			message.append(driver.name)
+		return dumps(message)
 
 	@methodroute('/modems')
 	def index_modems(self):
-		return self.kernel.modems
+		message = []
+		for modem in self.kernel.modems:
+			message.append(modem.name)
+		return dumps(message)
 
 	@methodroute('/automatons')
 	def index_automatons(self):
-		return self.kernel.automatons
+		message = []
+		for automatons in self.kernel.automatons:
+			message.append(automatons.name)
+		return dumps(message)
 
 	@methodroute('/interfaces')
 	def index_interfaces(self):
-		return self.kernel.interfaces
+		message = []
+		for interface in self.kernel.interfaces:
+			message.append(interface.name)
+		return dumps(message)
 
 	@methodroute('/devices')
 	def index_devices(self):
-		return self.kernel.devices	
+		message = []
+		for device in self.kernel.devices:
+			message.append(device.name)
+		return dumps(message)
+
+	# Shows
 
 	def run(self):
 		routing(self)

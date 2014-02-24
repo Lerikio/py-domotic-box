@@ -34,7 +34,9 @@ class Modem():
 		# la partie hardware
 		self.settings = {'COM_port' : ('integer', None)}
 		self.modem_type = 'radio_433' 
-	
+		# Nécessaire pour l'interface
+		self.name = "Radio 433MHz"
+
 	def get_set_arguments(self):
 		""" Returns the dictionary of arguments that
 		have to be used in order to set this module.

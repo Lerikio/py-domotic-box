@@ -58,6 +58,9 @@ class Driver():
 		# seulement si cela a un sens. Ici, un NexaSwitch ne sera instantié
 		# que si on en détecte un, automatiquement.
 		self.instantiable_devices = [NexaVirtualRemote]
+
+		# Nécessaire pour l'interface
+		self.name = "Nexa"
 			
 	def get_set_arguments(self):
 		""" Returns the arguments needed to set the driver.	"""
