@@ -85,6 +85,36 @@ class Interface():
 
 	# Shows
 
+	@methodroute('/plugins/<name>')
+	def show_device(self):
+		selected_object = next((x for x in self.kernel.plugins if x.name == name), None)
+		return selected_object.to_JSON
+
+	@methodroute('/drivers/<name>')
+	def show_device(self):
+		selected_object = next((x for x in self.kernel.drivers if x.name == name), None)
+		return selected_object.to_JSON
+
+	@methodroute('/modems/<name>')
+	def show_device(self):
+		selected_object = next((x for x in self.kernel.modems if x.name == name), None)
+		return selected_object.to_JSON
+
+	@methodroute('/automatons/<name>')
+	def show_device(self):
+		selected_object = next((x for x in self.kernel.automatons if x.name == name), None)
+		return selected_object.to_JSON
+
+	@methodroute('/interfaces/<name>')
+	def show_device(self):
+		selected_object = next((x for x in self.kernel.interfaces if x.name == name), None)
+		return selected_object.to_JSON
+
+	@methodroute('/devices/<name>')
+	def show_device(self):
+		selected_object = next((x for x in self.kernel.devices if x.name == name), None)
+		return selected_object.to_JSON
+
 	def run(self):
 		routing(self)
 		run(host=self.host, port=self.port)
