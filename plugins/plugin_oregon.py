@@ -25,7 +25,9 @@ class Driver():
     # Interface avec le kernel 
     #---------------------------------------------------------------
 
-    def __init__(self):
+    def __init__(self, kernel):
+        self.kernel = kernel
+
         # Jusqu'a ce qu'on l'ait configure, le driver n'a pas encore de modem
         self.modem = None
 
