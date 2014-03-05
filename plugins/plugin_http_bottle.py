@@ -40,6 +40,19 @@ class Interface():
 		# Nécessaire pour l'interface
 		self.name = "Module HTTP"
 
+	# Connexion
+
+	@methodroute('/connexion')
+	def connexion():
+		data = request.body.readline()
+		entity = json.loads(data)
+		if not entity.has_key('password') and not entity.has_key('login'):
+			abort(400, 'No login or password specified')
+		else:
+			if not entity['login'] == 'Domotic Box' and not entity['password'] == 'supélec':
+				abort(400, 'Unvalid login or password')
+	connexion.method = 'POST'
+
 	# Indexes
 	@methodroute('/plugins')
 	def index_plugins(self):
