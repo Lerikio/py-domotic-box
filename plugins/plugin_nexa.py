@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import kernel, types, time
+
 #---------------------------------------------------------------
 # Plugin importable permettant à la centrale de gérer le 
 # protocole Nexa. C'est un plugin de type protocol. D'une part, 
@@ -7,8 +9,6 @@
 # périphériques qu'elle apporte.
 #---------------------------------------------------------------
 
-# TODO: réflechir à cette histoire de core_classes
-from core_classes import * 
 
 PLUGIN_TYPE = 'protocol'
 """ Module variable allowing the Kernel to determine the type
@@ -16,7 +16,7 @@ of the plugin and to instantiate it accordingly.
 
 """
 
-class Driver():
+class Protocol():
 	""" Main class of a protocol plugin.
 	
 	"""
@@ -25,25 +25,27 @@ class Driver():
 	# Interface avec le kernel 
 	#---------------------------------------------------------------
 
-	def __init__(self, kernel):
-		self.kernel = kernel
+	def __init__(self):
+		# TODO: rajouter le kernel comme argument et la ligne
+		# suivante quand le kernel marchera
+		# self.kernel = kernel
 		
 		# Jusqu'à ce qu'on l'ait configuré, le driver n'a pas encore de modem
 		self.modem = None
 
-		# On définit la structure de messages radio propre au protocole nexa 
-		self.message_structure = 4*32*[((200,300),(2000,2500))]
-		
-		{
-								'baselength' : 250,
-								'symbols' : {
-										'start' : [1,10],
-										'one' : [1,5,1,1],
-										'zero' : [1,1,1,5],
-										'end' : [1,30]
-										},
-								'structure' : ['start'] + 32*[('one','zero')] + ['end']
-								}
+# 		# On définit la structure de messages radio propre au protocole nexa 
+# 		self.message_structure = 4*32*[((200,300),(2000,2500))]
+# 		
+# 		{
+# 								'baselength' : 250,
+# 								'symbols' : {
+# 										'start' : [1,10],
+# 										'one' : [1,5,1,1],
+# 										'zero' : [1,1,1,5],
+# 										'end' : [1,30]
+# 										},
+# 								'structure' : ['start'] + 32*[('one','zero')] + ['end']
+# 								}
 
 		# Liste des périphériques connectés gérés par ce driver
 		self.devices = []
@@ -52,12 +54,12 @@ class Driver():
 		self.settings = {'modem' : ('Modem', None)}
 		
 		# Liste des périphériques potentiellement gérables par ce driver
-		self.handled_devices = [NexaSwitch, NexaVirtualRemote]
+		self.handled_devices = [NexaRemote, NexaDevice]
 		
 		# Le driver ne propose à l'extérieur d'instantier un périphérique
 		# seulement si cela a un sens. Ici, un NexaSwitch ne sera instantié
 		# que si on en détecte un, automatiquement.
-		self.instantiable_devices = [NexaVirtualRemote]
+		self.instantiable_devices = [NexaDevice]
 
 		# Nécessaire pour l'interface
 		self.name = "Nexa"
@@ -67,9 +69,8 @@ class Driver():
 		return self.settings
 	
 	def set(self, args):
-		""" Sets the driver. Returns True if the setting was a success. 
-		Otherwise, it returns a tuple containing the setting which caused 
-		the issue.
+		""" Sets the driver. It raises a TypeError if the given modem doesn't
+		match the awaited modem type.
 		
 		Keyword arguments:
 		settings -- the dictionary of settings used to set the driver. Its 
@@ -77,20 +78,22 @@ class Driver():
 		
 		"""
 		
-		# On vérifie que les arguments donnés sont valides
-		retour = True
-		if args['modem'].get_modem_type() == 'radio_433': 
-			self.modem = args['modem']
-			# On spécifie au modem la structure de message qu'on attend au modem 
-			# pour qu'il nous transmette ce qui est nous est adressé
-			self.modem.attach({
-							'structure' : 4*32*[[(150,350),(1000,1500)]],
-							'i' : 0,
-							'length' : 4*32,
-							'method' : self.decode_sequence})
-		else:
-			retour = ('modem', "Le modem specifié n'est pas du bon type")
-		return retour
+		try:
+			# On vérifie que les arguments donnés sont valides
+			if args['modem'].get_modem_type() == 'radio_433': 
+				self.modem = args['modem']
+				self.modem.attach(self)
+			else:
+				# Si ce n'est pas le cas, on lève une TypeError
+				raise TypeError("A modem whose type is 'radio_433' is awaited. Received instead a modem whose type is '"+args['modem'].get_modem_type()+"'.");
+		except Exception, e:
+			raise e
+		
+# 			{
+# 				'structure' : 4*32*[[(150,350),(1000,1500)]],
+# 				'i' : 0,
+# 				'length' : 4*32,
+# 				'method' : self.decode_sequence}
 
 	def get_instantiable_devices(self):
 		""" Returns a list of the devices instantiable by the user
@@ -105,26 +108,33 @@ class Driver():
 		return [i.device_infos for i in self.instantiable_devices]
 
 	def add_device(self, device_id, args):
-		""" Proxy method used to instantiate a new device. Returns True
-		if the instantiation has succeeded, otherwise the arguments which
-		caused an issue.
- 		 
+		""" Proxy method used to instantiate a new device. It raises a 
+		ValueError if the device_id given is out of range. It may raise 
+		a TypeError if the args given to set the new device don't match 
+		the settings format.
+ 		
 		"""
-		retour = True
-		if device_id == 0:
-			new_device = NexaVirtualRemote()
-			# TODO: Vérifier que les bons arguments sont fournis
-			# avec une fonction générique (ce problème se pose 
-			# souvent dans le programme)
-			new_device.set(self, args)
-			self.devices.append(new_device)
-			self.kernel.devices.append(new_device)
-		else:
-			retour = ('device_id', "device_id out of range")
 		
-		return retour
-	
+		try:
+			if device_id == 0:
+				new_device = NexaDevice()
+				# TODO: Vérifier que les bons arguments sont fournis
+				# avec une fonction générique (ce problème se pose 
+				# souvent dans le programme)
+				new_device.set(self, args)
+				self.devices.append(new_device)
+				# TODO: rajouter cette ligne quand le kernel fonctionnera
+				# self.kernel.devices.append(new_device)
+			else:
+				raise ValueError("The device id given is out of range.")
+		except Exception, e:
+			raise e
+		
 	def get_devices(self):
+		""" Returns the list of the devices that are currently handled 
+		by this protocol. 
+		 
+		"""
 		return self.devices
 
 	#---------------------------------------------------------------
@@ -139,10 +149,21 @@ class Driver():
 	# La méthode doit être spécialisée pour traiter et décoder une trame Nexa
 	# Elle sera totalement rédigée quand on saura sous quelle forme le message est obtenu
 	def decode_sequence(self, sequence):
+		""" Processes a radio sequence received by the radio modem 
+		into a message understable by the protocol.
+		The implementation of the sequence processing is , for the
+		moment, a hard-coded finite-state machine.		
+		
+		"""
 		# TODO: Transformation de ce qui est reçu du modem en message de 32 bits
 		# Transformation d'un tableau de bits en entiers
 		#print len(sequence)
 		#print sequence
+		
+		state = 'unknown'
+		
+		def is_start(duration):
+			return True if (1800 < duration*32 < 3000) else False
 		
 		def is_short(duration):
 			return True if (0 < duration*32 < 800) else False
@@ -150,29 +171,50 @@ class Driver():
 		def is_long(duration):
 			return True if (800 < duration*32 < 2000) else False
 		
-		for index in range(len(sequence)):
-			if is_short(sequence[index]):
-				sequence[index] = 'short'
-			else:
-				sequence[index] = 'long'
-		#print sequence
+		def is_end(duration):
+			return True if (2000 < duration*32) else False
 		
-		abort = False
-		temp_list = [0,0,0,0]
-		nexa_sequence = []
-		for j in range(len(sequence)/4):
-			for i in range(4):
-				temp_list[i] = sequence.pop(0)
+		for i in sequence:
+			if state == 'unknown':
+				nexa_sequence = []
+				if is_short(i):	state = 'start1'
+			elif state == 'start1':
+				if is_start(i): state = 'start2'
+				else: state = 'unknown'				
+			elif state == 'start2':
+				if is_short(i): state = 'short'
+				else: state = 'unknown'	
+			elif state == 'short':
+				if is_short(i): state = 'zero1'
+				elif is_long(i): state = 'one1'
+				elif is_end(i): state = 'end'
+				else: state = 'unknown'	
+			elif state == 'one1':
+				if is_short(i): state = 'one2'
+				else: state = 'unknown'	
+			elif state == 'one2':
+				if is_short(i): state = 'one_ok'
+				else: state = 'unknown'	
+			elif state == 'one_ok':
+				nexa_sequence.append(1)
+				if is_short(i): state = 'short'
+				else: state = 'unknown'	
+			elif state == 'zero1':
+				if is_short(i): state = 'zero2'
+				else: state = 'unknown'	
+			elif state == 'zero2':
+				if is_long(i): state = 'zero_ok'
+				else: state = 'unknown'	
+			elif state == 'zero_ok':
+				nexa_sequence.append(0)
+				if is_short(i): state = 'short'
+				else: state = 'unknown'	
+			elif state == 'end':
+				break
+		
+		if len(nexa_sequence) == 32: # On s'assure qu'on a une séquence cohérente
 			
-			#print temp_list
-			if temp_list == ['short', 'long', 'short', 'short']:
-				nexa_sequence += [1]
-			elif temp_list == ['short', 'short', 'short', 'long']:
-				nexa_sequence += [0]
-			else:
-				abort = True
-		
-		if not abort:
+			# Converts a list of binary values to integer
 			def from_bitfield_to_int(bitfield):
 				return sum([i*2**(len(bitfield)-1-idi) for idi, i in enumerate(bitfield)])
 			
@@ -182,28 +224,69 @@ class Driver():
 			unit_code = from_bitfield_to_int(nexa_sequence[28:32])
 			
 			device_found = False
+			
 			for device in self.devices:
-				if device.house_code == house_code and device.unit_code == unit_code:
+				# Si la device est déjà dans la liste ET que ce n'est pas une NexaDevice, c'est que c'est une NexaRemote qu'on connait et on la met à jour
+				if device.house_code == house_code and device.unit_code == unit_code and NexaDevice not in device.__class__.__bases__:
 					device_found = True
-					# TODO: Il faudrait vérifier qu'on a bien à faire à un sensor
-					device.update(command)
+					if command == 1 : device.switch_on()
+					else: device.switch_off()
+			
 			if not device_found:
-				new_device = NexaSwitch()
-				new_device.set(self, {
-									'name' : "New Nexa Switch",
-									'description' : "A new Nexa Switch has been detected and added to your devices.",
-									'location' : "Specify a location.",
-									'house_code' : house_code,
-									'group_code' : group_code,
-									'unit_code' : unit_code})
+				new_device = NexaRemote(self, house_code, group_code, unit_code)
+				new_device.set({
+							'name' : "New Nexa Switch",
+							'description' : "A new Nexa Switch has been detected and added to your devices.",
+							'location' : "Specify a location."})
 				self.devices.append(new_device)
-				self.kernel.devices.append(new_device)
+				# TODO: rajouter cette ligne quand le kernel marchera
+				# self.kernel.devices.append(new_device)	
+				
+				print "nouvelle télécommande"
+				print house_code
+				print group_code
+				print unit_code
+				print "\n\n"
+
+				
+			
+			
+		
+# 		for index in range(len(sequence)):
+# 			if is_short(sequence[index]):
+# 				sequence[index] = 'short'
+# 			else:
+# 				sequence[index] = 'long'
+# 		#print sequence
+# 		
+# 		abort = False
+# 		temp_list = [0,0,0,0]
+# 		nexa_sequence = []
+# 		for j in range(len(sequence)/4):
+# 			for i in range(4):
+# 				temp_list[i] = sequence.pop(0)
+# 			
+# 			#print temp_list
+# 			if temp_list == ['short', 'long', 'short', 'short']:
+# 				nexa_sequence += [1]
+# 			elif temp_list == ['short', 'short', 'short', 'long']:
+# 				nexa_sequence += [0]
+# 			else:
+# 				abort = True
+# 		
+# 		if not abort:
+			
 	#---------------------------------------------------------------
 	# Interface avec les devices 
 	#---------------------------------------------------------------
 
 	def send_command(self, device, command):
-		error_code = True
+		""" Method called when a device intends to send a message.
+		It builds up the Nexa message according to the command 
+		to be sent and the identity of the sending device. 
+		
+		"""
+		# error_code = True
 		
 		symbols = ['1' + 10*'0',
 				'10000010',
@@ -226,8 +309,11 @@ class Driver():
 		coded_sequence += [3]
 		
 		call_arg = [16,250] + symbols + [coded_sequence]
-		self.modem.send_sequence(call_arg)
 		
+		try:
+			self.modem.send_sequence(call_arg)
+		except Exception, e:
+			raise e
 		
 # 		try:
 # 			self.modem.send_sequence([16,250].extend(symbols) + coded_sequence)
@@ -235,18 +321,21 @@ class Driver():
 # 			print "problème dans send_sequence"
 # 			error_code = False
 			
-		return error_code
+		# return error_code
 
 #---------------------------------------------------------------
 
 # Interrupteur Nexa classique on/off
-class NexaSwitch(Device):
+class NexaDevice(kernel.Device):
+	""" This is the class used to implement any Nexa-controlled device.
+	 
+	"""
 
 	# Ce sont les attributs qui caractérisent ce type de périphérique
 	device_infos = {
-				'device_name' : "Nexa Switch",
+				'device_name' : "Nexa Device",
 				'device_brand' : "Nexa",
-				'device_description' : "Interrupteur Nexa on/off",
+				'device_description' : "Any Nexa-compatible device.",
 				'arguments' : {
 							'name' : ('string', 50),
 							'description' : ('string', 1000),
@@ -255,171 +344,217 @@ class NexaSwitch(Device):
 							'group_code' : ('integer', (0,1)),
 							'unit_code' : ('integer', (0,15))}}
 
-	def __init__(self):
+	def __init__(self, protocol):
+		""" The constructor only takes the protocol to which
+		the device is linked as argument.
+		
+		
+		"""
+		
+		self.protocol = protocol
+		
 		self.name = None
 		self.description = None
 		self.location = None
-		self.driver = None
-		
 		self.house_code = None
 		self.group_code = None
 		self.unit_code = None
 		
 		self.informations = []
-		self.informations. append(Information("Etat de l'interrupteur",
-											"Décrit l'état de l'interrupteur",
-											("state", ("on", "off"))))
+		self.informations. append(kernel.Information("Etat de l'interrupteur", 
+													"Décrit l'état de l'interrupteur", 
+													("state", ("on", "off"))))
 		self.actions = []
-		self.actions.append(Action(
+		self.actions.append(kernel.Action(
 								"on", 
-								"appuyer sur le bouton on de la télécommande", 
+								"allumer le périphérique", 
 								self.switch_on, 
 								{}))
-		self.actions.append(Action(
+		self.actions.append(kernel.Action(
 								"off", 
-								"appuyer sur le bouton off de la télécommande", 
+								"éteindre le périphérique", 
 								self.switch_off, 
 								{}))
-		self.actions.append(Action(
+		self.actions.append(kernel.Action(
 								"sync", 
-								"synchroniser la télécommande", 
+								"synchroniser le périphérique avec la centrale", 
 								self.sync, 
 								{}))
-		self.actions.append(Action(
+		self.actions.append(kernel.Action(
 								"unsync", 
-								"désynchroniser la télécommande", 
+								"désynchroniser le périphérique de la centrale", 
 								self.unsync, 
 								{}))
 		
-	def set(self, driver, args):
-		# TODO: vérifier la cohérence des arguments fournis avec ce qui a été demandé
-		self.name = args['name']
-		self.description = args['description']
-		self.location = args['location']
-		self.driver = driver
+	def set(self, args):
+		""" The Nexa Device can be set according to the settings 
+		dictionary given in device_infos['arguments'] 
 		
-		self.house_code = args['house_code']
-		self.group_code = args['group_code']
-		self.unit_code = args['unit_code']
 		
-		#print self
+		"""
+		
+		try:
+			if(type(args['name']) == types.StringType): self.name = args['name']
+			else: raise TypeError("The name given is not a string !")
+			
+			if(type(args['description']) == types.StringType): self.description = args['description']
+			else: raise TypeError("The description given is not a string !")
+			
+			if(type(args['location']) == types.StringType): self.location = args['location']
+			else: raise TypeError("The location given is not a string !")
+						
+			if(type(args['house_code']) == types.IntType): self.house_code = args['house_code']
+			else: raise TypeError("The house_code given is not an integer !")
+			
+			if(type(args['group_code']) == types.IntType): self.group_code = args['group_code']
+			else: raise TypeError("The group_code given is not an integer !")
+			
+			if(type(args['unit_code']) == types.IntType): self.unit_code = args['unit_code']
+			else: raise TypeError("The unit_code given is not an integer !")
+		except Exception, e:
+			raise e
 
-	def switch_on(self, args):
-		#print"switch_on"
-		self.driver.send_command(self, 1)
+	def switch_on(self):
+		""" Method called when the "on" action is triggered. 
+		On the one side, it sends the radio command accordingly.
+		On the other side, it updates the Information which 
+		reflects the state of the device.
+		
+		"""
+		
+		self.protocol.send_command(self, 1)
+		self.update(1)
 
-	def switch_off(self, args):
-		self.driver.send_command(self, 0)
+	def switch_off(self):
+		""" Method called when the "off" action is triggered. 
+		On the one side, it sends the radio command accordingly.
+		On the other side, it updates the Information which 
+		reflects the state of the device.
+		
+		"""
+		
+		self.protocol.send_command(self, 0)
+		self.update(0)
 	
-	def sync(self, args):
+	def sync(self):
+		""" Method called when the "sync" action is triggered. 
+		It sends a series of "on" commands.
+		
+		"""
+		
 		for i in range(5):
 			self.switch_on({})
 			time.sleep(0.1)
 	
-	def unsync(self, args):
+	def unsync(self):
+		""" Method called when the "unsync" action is triggered. 
+		It sends a series of "off" commands.
+		
+		"""
+		
 		for i in range(5):
 			self.switch_off({})
 			time.sleep(0.1)
 	
 	def update(self, new_command):
-		retour = True
-		if new_command == 1:
-			self.informations[0].update("on")
-		elif new_command == 0:
-			self.informations[0].update("off")
-		else:
-			retour = "La nouvelle commande n'était ni un 1 ni un 0."
-		return retour
+		""" Method called to update the state of the device. 
+		It updates the linked Information accordingly.		
+		
+		"""
+		
+		try:
+			if new_command == 1:
+				self.informations[0].update("on")
+			elif new_command == 0:
+				self.informations[0].update("off")
+			else:
+				raise ValueError("The new state was neither 0 nor 1.")
+		except Exception, e:
+			raise e
 
 #---------------------------------------------------------------
 
-# Permet de simuler une télécommande Nexa 
-class NexaVirtualRemote(Device):
+class NexaRemote(kernel.Device):
 
 	# Ce sont les attributs qui caractérisent ce type de périphérique
 	device_infos = {
-				'device_name' : "Nexa Virtual Remote",
+				'device_name' : "Nexa Remote",
 				'device_brand' : "Nexa",
-				'device_description' : "Simulation d'une télécommande deux états Nexa",
+				'device_description' : "Auto-detected Nexa remote.",
 				'arguments' : {
 							'name' : ('string', 50),
 							'description' : ('string', 1000),
-							'location' : ('string', 100),
-							'house_code' : ('integer', (0,67108863)),
-							'group_code' : ('integer', (0,1)),
-							'unit_code' : ('integer', (0,15))}}
+							'location' : ('string', 100),}}
 
-	def __init__(self):
+	def __init__(self, protocol, house_code, group_code, unit_code):
+		""" The constructor does not only take the protocol but also 
+		the house_code, the group_code and the unit_code of the newly
+		discovered remote as arguments since they will always remain
+		the same.
+		
+		"""
+		
 		self.name = None
 		self.description = None
 		self.location = None
-		self.driver = None
 		
-		self.house_code = None
-		self.group_code = None
-		self.unit_code = None
+		self.protocol = protocol
+		self.house_code = house_code
+		self.group_code = group_code
+		self.unit_code = unit_code
 		
 		self.informations = []
-		self.informations. append(Information("Etat de l'interrupteur",
-											"Décrit l'état de l'interrupteur",
-											("state", ("on", "off"))))
+		self.informations. append(kernel.Information("Etat de la télécommande", 
+													"Décrit l'état de la télécommande", 
+													("state", ("on", "off"))))
 		
-		self.actions = []
-		self.actions.append(Action(
-								"on", 
-								"appuyer sur le bouton on de la télécommande", 
-								self.switch_on, 
-								{}))
-		self.actions.append(Action(
-								"off", 
-								"appuyer sur le bouton off de la télécommande", 
-								self.switch_off, 
-								{}))
-		self.actions.append(Action(
-								"sync", 
-								"synchroniser la télécommande", 
-								self.sync, 
-								{}))
-		self.actions.append(Action(
-								"unsync", 
-								"désynchroniser la télécommande", 
-								self.unsync, 
-								{}))
+	def set(self, args):
+		""" Method enabling the user to change the name, the description and
+		the location of the device. The args must follow the format given in
+		device_infos['arguments'].
 		
-	def set(self, driver, args):
-		# TODO: vérifier la cohérence des arguments fournis avec ce qui a été demandé
-		self.name = args['name']
-		self.description = args['description']
-		self.location = args['location']
-		self.driver = driver
+		"""
 		
-		self.house_code = args['house_code']
-		self.group_code = args['group_code']
-		self.unit_code = args['unit_code']
+		try:
+			if(type(args['name']) == types.StringType): self.name = args['name']
+			else: raise TypeError("The name given is not a string !")
+			
+			if(type(args['description']) == types.StringType): self.description = args['description']
+			else: raise TypeError("The description given is not a string !")
+			
+			if(type(args['location']) == types.StringType): self.location = args['location']
+			else: raise TypeError("The location given is not a string !")
+		except Exception, e:
+			raise e
 		
-	def switch_on(self, args):
-		#print"switch_on"
-		self.driver.send_command(self, 1)
+	def switch_on(self):
+		""" Method called by the protocol when an "on" radio
+		message for this specific device has been received.
+		
+		"""
+		
+		self.update(1)
 
-	def switch_off(self, args):
-		self.driver.send_command(self, 0)
-	
-	def sync(self, args):
-		for i in range(5):
-			self.switch_on({})
-			time.sleep(0.1)
-	
-	def unsync(self, args):
-		for i in range(5):
-			self.switch_off({})
-			time.sleep(0.1)
+	def switch_off(self):
+		""" Method called by the protocol when an "off" radio
+		message for this specific device has been received.
+		
+		"""
+		
+		self.update(0)
 	
 	def update(self, new_command):
-		retour = True
-		if new_command == 1:
-			self.informations[0].update("on")
-		elif new_command == 0:
-			self.informations[0].update("off")
-		else:
-			retour = "La nouvelle commande n'était ni un 1 ni un 0."
-		return retour
+		""" Method called to update the state of the device. 
+		It updates the linked Information accordingly.		
+		
+		"""
+		
+		try:
+			if new_command == 1:
+				self.informations[0].update("on")
+			elif new_command == 0:
+				self.informations[0].update("off")
+			else:
+				raise ValueError("The new state was neither 0 nor 1.")
+		except Exception, e:
+			raise e
