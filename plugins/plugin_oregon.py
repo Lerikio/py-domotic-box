@@ -8,15 +8,10 @@
 #---------------------------------------------------------------
 
 # TODO: reflechir a cette histoire de core_classes
-from core_classes import * 
 
-PLUGIN_TYPE = 'protocol'
-""" Module variable allowing the Kernel to determine the type
-of the plugin and to instantiate it accordingly. 
+import kernel
 
-"""
-
-class Driver():
+class Oregon(kernel.Protocol):
     """ Main class of a protocol plugin.
     
     """
@@ -227,7 +222,7 @@ class OregonTHGR122NX():
                 self.unit_code = None
 
                 self.informations = []
-                self.informations.append(Information(
+                self.informations.append(kernel.Information(
                                             "Temperature", "Donne la temperature relevee", ("Temperature", arithmetic_progression(-50, 50, 0.1)),
                                             "Humidity", "Donne l'humidite relevee", ("Humidity, range[0;100] ")
                                                     )
@@ -245,5 +240,13 @@ class OregonTHGR122NX():
                 self.group_code = args['group_code']
                 self.unit_code = args['unit_code']
 
-             
-    
+""" Set of attributes which describe the plugin, in order 
+to add it to the kernel and then be able to describe it
+to the user.  
+
+"""
+plugin_type = "protocol"
+name = "Oregon"
+description = "A protocol plugin which enables the use of Oregon-powered devices. A compatible 433 MHz modem is needed for the protocol to function."
+plugin_id = "4"
+protocol_class = Oregon

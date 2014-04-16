@@ -7,14 +7,8 @@ import time
 import threading
 import kernel 
 
-PLUGIN_TYPE = 'modem'
-""" Module variable allowing the Kernel to determine the type
-of the plugin and to instantiate it accordingly. 
-
-"""
-
 # Plugin importable permettant à la centrale de communiquer en radio
-class Modem():
+class Radio433Modem(kernel.Modem):
 	""" Class implementing the interface between the computer
 	running the domotic box and the Arduino, which is used as 
 	a 433MHz radio modem. 
@@ -178,6 +172,22 @@ class Modem():
 				time.sleep(0.1)
 		except Exception, e:
 			raise e	
+
+
+""" Set of attributes which describe the plugin, in order 
+to add it to the kernel and then be able to describe it
+to the user.  
+
+"""
+plugin_type = "modem"
+name = "Radio433Modem"
+description = "A modem plugin which allows the use of the Arduino (correctly configured) as a radio 433MHz AM transmitter."
+plugin_id = "1"
+modem_class = Radio433Modem    
+
+
+
+
 
 # 	def identify_sequence(self, sequence):
 # 		start_position = 0

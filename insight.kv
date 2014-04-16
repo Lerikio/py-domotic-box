@@ -1,0 +1,147 @@
+<Connexion>:
+	BoxLayout
+		id: login_layout
+		orientation: 'vertical'
+		padding: [10,50,10,50]
+		spacing: 50
+
+		Label:
+			text: "Welcome"
+			font_size: 32
+
+		BoxLayout:
+			orientation: "vertical"
+
+			Label:
+				text: "Hôte"
+				font_size: 12
+				halign: 'left'
+				text_size: root.width-20, 20
+
+			TextInput:
+				id: host
+				multiline:False
+				font_size: 8
+
+		BoxLayout:
+			orientation: 'vertical'
+			Label:
+				text: "Nom d'utilisateur"
+				halign: "left"
+				font_size: 12
+				text_size: root.width-20, 20
+
+			TextInput:
+				id: login
+				multiline:False
+				port:True
+				font_size: 8
+
+		BoxLayout:
+			orientation: 'vertical'
+			Label:
+				text: "Mot de passe"
+				halign: "left"
+				font_size: 12
+				text_size: root.width-20, 20
+
+			TextInput:
+				id: password
+				multiline:False
+				port:True
+				font_size: 8
+				password: True
+
+		Button:
+			text: "Connexion"
+			font_size: 24
+
+			on_press: root.do_login(host.text, login.text, password.text)
+
+
+
+<MainMenu>:
+	id: mainMenu
+	BoxLayout:
+		orientation: 'vertical'
+
+		Label:
+			text: "Vous êtes connecté !"
+			font_size: 32
+
+		Button:
+			text: "Voir les appareils connectés"
+			font_size: 24
+			on_press: mainMenu.go_to('devices')
+			background_color: (0,0.6,1,1)
+
+		Button:
+			text: "Voir les drivers installés"
+			font_size: 24
+			on_press: mainMenu.go_to('drivers')			
+			background_color: (0,0.6,1,1)
+
+		Button:
+			text: "Voir les scénarios chargés"
+			font_size: 24
+			on_press: mainMenu.go_to('automatons')
+			background_color: (0,0.6,1,1)
+
+		Button:
+			text: "Disconnect"
+			font_size: 24
+			on_press: mainMenu.disconnect()
+
+<SubView>:
+	ScrollView:
+        # container for the "notifications"
+        y: dg.top # let's stick it to the top
+        x: root.x # and to the left
+        size_hint_y: None
+        do_scroll_x: False # only vertical scrolling
+        do_scroll_y: True
+        
+        # most of the magic is there, auto adjust size to follow the draggable label
+        height: root.top - dg.y
+
+        # let's put a nearly opaque black background
+        canvas:
+            Color:
+                rgba: 0, 0, 0, .8
+            Rectangle:
+                pos: self.pos
+                size: self.size
+    
+        # the actual notification container, with placeholder content
+        BoxLayout:
+            size_hint_y: None
+            height: 50
+            orientation: 'vertical'
+
+            Button:
+				text: "Retour au menu"
+				font_size: 12
+				on_press: root.back_to_main_menu()
+				on_press: dg.restart()
+
+    # the draggable label, which behaviour is defined in python file
+    DraggableLabel:
+        # some decoration behind the text
+        canvas.before:
+            Color:
+                rgba: 0, 0, 0, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+            Color:
+                rgba: 0, 0.6, 1, 1
+            Rectangle:
+                pos: self.pos
+                size: self.width, 1
+
+        size_hint_y: None
+        top: root.top
+        # assign its id to "dg" so we can reference it elsewhere
+        id: dg
+        height: '20pt'
+        text: 'drag me'

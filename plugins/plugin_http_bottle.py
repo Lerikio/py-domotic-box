@@ -2,12 +2,7 @@
 
 from bottle import route, run
 from json import dumps
-
-PLUGIN_TYPE = 'interface'
-""" Module variable allowing the Kernel to determine the type
-of the plugin and to instantiate it accordingly. 
-
-"""
+import kernel
 
 def routing(obj):
 	""" Set the routes for the app
@@ -25,7 +20,7 @@ def methodroute(route):
 		return f
 	return decorator
 
-class Interface():
+class HTTPInterface(kernel.Interface):
 	""" Allows HTTP communications
 	"""
 
@@ -84,37 +79,18 @@ class Interface():
 		return dumps(message)
 
 	# Shows
-
-	@methodroute('/plugins/<name>')
-	def show_device(self):
-		selected_object = next((x for x in self.kernel.plugins if x.name == name), None)
-		return selected_object.to_JSON
-
-	@methodroute('/drivers/<name>')
-	def show_device(self):
-		selected_object = next((x for x in self.kernel.drivers if x.name == name), None)
-		return selected_object.to_JSON
-
-	@methodroute('/modems/<name>')
-	def show_device(self):
-		selected_object = next((x for x in self.kernel.modems if x.name == name), None)
-		return selected_object.to_JSON
-
-	@methodroute('/automatons/<name>')
-	def show_device(self):
-		selected_object = next((x for x in self.kernel.automatons if x.name == name), None)
-		return selected_object.to_JSON
-
-	@methodroute('/interfaces/<name>')
-	def show_device(self):
-		selected_object = next((x for x in self.kernel.interfaces if x.name == name), None)
-		return selected_object.to_JSON
-
-	@methodroute('/devices/<name>')
-	def show_device(self):
-		selected_object = next((x for x in self.kernel.devices if x.name == name), None)
-		return selected_object.to_JSON
-
+	
 	def run(self):
 		routing(self)
 		run(host=self.host, port=self.port)
+		
+""" Set of attributes which describe the plugin, in order 
+to add it to the kernel and then be able to describe it
+to the user.  
+
+"""
+plugin_type = "interface"
+name = "HTTP Interface"
+description = "An interface plugin which enables the use of the HTTP protocol to communicate with the box."
+plugin_id = "5"
+interface_class = HTTPInterface 

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import kernel, types, time
+import kernel as ker
+import types
+import time
 
 #---------------------------------------------------------------
 # Plugin importable permettant à la centrale de gérer le 
@@ -9,14 +11,7 @@ import kernel, types, time
 # périphériques qu'elle apporte.
 #---------------------------------------------------------------
 
-
-PLUGIN_TYPE = 'protocol'
-""" Module variable allowing the Kernel to determine the type
-of the plugin and to instantiate it accordingly. 
-
-"""
-
-class Protocol():
+class Nexa(ker.Protocol):
 	""" Main class of a protocol plugin.
 	
 	"""
@@ -25,10 +20,8 @@ class Protocol():
 	# Interface avec le kernel 
 	#---------------------------------------------------------------
 
-	def __init__(self):
-		# TODO: rajouter le kernel comme argument et la ligne
-		# suivante quand le kernel marchera
-		# self.kernel = kernel
+	def __init__(self, kernel):
+		self.kernel = kernel
 		
 		# Jusqu'à ce qu'on l'ait configuré, le driver n'a pas encore de modem
 		self.modem = None
@@ -115,23 +108,34 @@ class Protocol():
  		
 		"""
 		
+		methodReturn = False
 		try:
-			if device_id == 0:
-				new_device = NexaDevice()
-				# TODO: Vérifier que les bons arguments sont fournis
-				# avec une fonction générique (ce problème se pose 
-				# souvent dans le programme)
-				new_device.set(self, args)
+			if device_id in [0, 1]:
+				if device_id == 0:
+					new_device = NexaDevice(self)
+				elif device_id == 1:
+					new_device = NexaRemote(self, args['house_code'], args['group_code'], args['unit_code'])
+				
+				new_device.set(args)
+				
 				self.devices.append(new_device)
-				# TODO: rajouter cette ligne quand le kernel fonctionnera
-				# self.kernel.devices.append(new_device)
+				
+				self.kernel.add_to_kernel(new_device)
+				for i in new_device.informations:
+					self.kernel.add_to_kernel(i)
+				for a in new_device.actions:
+					self.kernel.add_to_kernel(a)
+						
+				methodReturn = new_device
 			else:
 				raise ValueError("The device id given is out of range.")
 		except Exception, e:
 			raise e
 		
+		return methodReturn
+		
 	def get_devices(self):
-		""" Returns the list of the devices that are currently handled 
+		""" Returns the list of devices that are currently handled 
 		by this protocol. 
 		 
 		"""
@@ -163,7 +167,7 @@ class Protocol():
 		state = 'unknown'
 		
 		def is_start(duration):
-			return True if (1800 < duration*32 < 3000) else False
+			return True if (1800 < duration*32) else False
 		
 		def is_short(duration):
 			return True if (0 < duration*32 < 800) else False
@@ -227,20 +231,20 @@ class Protocol():
 			
 			for device in self.devices:
 				# Si la device est déjà dans la liste ET que ce n'est pas une NexaDevice, c'est que c'est une NexaRemote qu'on connait et on la met à jour
-				if device.house_code == house_code and device.unit_code == unit_code and NexaDevice not in device.__class__.__bases__:
+				if device.properties['house_code'] == house_code and device.properties['unit_code'] == unit_code:
 					device_found = True
-					if command == 1 : device.switch_on()
-					else: device.switch_off()
+					if NexaDevice not in device.__class__.__mro__:
+						if command == 1: device.switch_on()
+						else: device.switch_off()
 			
 			if not device_found:
-				new_device = NexaRemote(self, house_code, group_code, unit_code)
-				new_device.set({
-							'name' : "New Nexa Switch",
-							'description' : "A new Nexa Switch has been detected and added to your devices.",
-							'location' : "Specify a location."})
-				self.devices.append(new_device)
-				# TODO: rajouter cette ligne quand le kernel marchera
-				# self.kernel.devices.append(new_device)	
+				self.add_device(1, {
+								'name' : "New Nexa Switch",
+								'description' : "A new Nexa Switch has been detected and added to your devices.",
+								'location' : "Specify a location.",
+								'house_code': house_code,
+								'group_code': group_code,
+								'unit_code' : unit_code})
 				
 				print "nouvelle télécommande"
 				print house_code
@@ -293,10 +297,10 @@ class Protocol():
 				'10100000',
 				'1' + 40*'0']
 
-		bin_house_code = (26-len(bin(device.house_code)[2:]))*'0' + bin(device.house_code)[2:]
-		bin_group_code = bin(device.group_code)[2:]
+		bin_house_code = (26-len(bin(device.properties['house_code'])[2:]))*'0' + bin(device.properties['house_code'])[2:]
+		bin_group_code = bin(device.properties['group_code'])[2:]
 		bin_command = bin(command)[2:]
-		bin_unit_code = (4-len(bin(device.unit_code)[2:]))*'0' + bin(device.unit_code)[2:]
+		bin_unit_code = (4-len(bin(device.properties['unit_code'])[2:]))*'0' + bin(device.properties['unit_code'])[2:]
 	
 		nexa_sequence = bin_house_code + bin_group_code + bin_command + bin_unit_code
 		
@@ -326,7 +330,7 @@ class Protocol():
 #---------------------------------------------------------------
 
 # Interrupteur Nexa classique on/off
-class NexaDevice(kernel.Device):
+class NexaDevice(ker.Device):
 	""" This is the class used to implement any Nexa-controlled device.
 	 
 	"""
@@ -353,38 +357,76 @@ class NexaDevice(kernel.Device):
 		
 		self.protocol = protocol
 		
-		self.name = None
-		self.description = None
-		self.location = None
-		self.house_code = None
-		self.group_code = None
-		self.unit_code = None
+		self.properties = {
+						'name': u'New Nexa Device',
+						'description': '<no description>',
+						'location': '<no location>',
+						'house_code': 0,
+						'group_code': 0,
+						'unit_code': 0
+						}
+		
+		self.properties_format = [
+								{ 'type': 'title',
+								'title': 'Device configuration' },
+								{ 'type': 'string',
+								'title': 'Name',
+								'desc': 'Name of the device',
+								'key': 'name' },
+								{ 'type': 'description',
+								'title': 'Description',
+								'desc': 'Description of the device',
+								'key': 'description' },
+								{ 'type': 'string',
+								'title': 'Location',
+								'desc': 'The place where the device is located',
+								'key': 'location' },
+								{ 'type': 'numeric',
+								'title': 'House code',
+								'desc': 'Must be between 0 and 67 108 863',
+								'key': 'house_code'	},
+								{ 'type': 'numeric',
+								'title': 'Group code',
+								'desc': 'Must be either 0 or 1',
+								'key': 'group_code'	},
+								{ 'type': 'numeric',
+								'title': 'Unit code',
+								'desc': 'Must be between 0 and 15',
+								'key': 'unit_code' }
+								]
+		
+# 		self.name = None
+# 		self.description = None
+# 		self.location = None
+# 		self.house_code = None
+# 		self.group_code = None
+# 		self.unit_code = None
 		
 		self.informations = []
-		self.informations. append(kernel.Information("Etat de l'interrupteur", 
+		self.informations.append(ker.Information("Etat de l'interrupteur", 
 													"Décrit l'état de l'interrupteur", 
 													("state", ("on", "off"))))
 		self.actions = []
-		self.actions.append(kernel.Action(
+		self.actions.append(ker.Action(
 								"on", 
 								"allumer le périphérique", 
 								self.switch_on, 
-								{}))
-		self.actions.append(kernel.Action(
+								[]))
+		self.actions.append(ker.Action(
 								"off", 
 								"éteindre le périphérique", 
 								self.switch_off, 
-								{}))
-		self.actions.append(kernel.Action(
+								[]))
+		self.actions.append(ker.Action(
 								"sync", 
 								"synchroniser le périphérique avec la centrale", 
 								self.sync, 
-								{}))
-		self.actions.append(kernel.Action(
+								[]))
+		self.actions.append(ker.Action(
 								"unsync", 
 								"désynchroniser le périphérique de la centrale", 
 								self.unsync, 
-								{}))
+								[]))
 		
 	def set(self, args):
 		""" The Nexa Device can be set according to the settings 
@@ -392,29 +434,60 @@ class NexaDevice(kernel.Device):
 		
 		
 		"""
+		print "set"
+		python_type = {
+					'string': types.StringType,
+					'bool': types.BooleanType,
+					'numeric': types.FloatType,
+					'options': types.StringType,
+					'description': types.StringType
+					}
 		
 		try:
-			if(type(args['name']) == types.StringType): self.name = args['name']
-			else: raise TypeError("The name given is not a string !")
+			for k, v in args.iteritems():
+				if self.properties.has_key(k):
+					value_type = [f['type'] for f in self.properties_format if f.has_key('key') and f['key'] == k][0]
+					if k in ['house_code', 'unit_code', 'group_code']:
+						self.properties[k] = int(python_type[value_type](v))
+					else:
+						self.properties[k] = python_type[value_type](v)
+			print "fin set"
 			
-			if(type(args['description']) == types.StringType): self.description = args['description']
-			else: raise TypeError("The description given is not a string !")
-			
-			if(type(args['location']) == types.StringType): self.location = args['location']
-			else: raise TypeError("The location given is not a string !")
-						
-			if(type(args['house_code']) == types.IntType): self.house_code = args['house_code']
-			else: raise TypeError("The house_code given is not an integer !")
-			
-			if(type(args['group_code']) == types.IntType): self.group_code = args['group_code']
-			else: raise TypeError("The group_code given is not an integer !")
-			
-			if(type(args['unit_code']) == types.IntType): self.unit_code = args['unit_code']
-			else: raise TypeError("The unit_code given is not an integer !")
+# 			if 'name' in args:
+# 				if(type(args['name']) == types.StringType): self.name = args['name']
+# 				else: raise TypeError("The name given is not a string !")
+# 			
+# 			if 'description' in args:
+# 				if(type(args['description']) == types.StringType): self.description = args['description']
+# 				else: raise TypeError("The description given is not a string !")
+# 			
+# 			if 'location' in args:
+# 				if(type(args['location']) == types.StringType): self.location = args['location']
+# 				else: raise TypeError("The location given is not a string !")
+# 			
+# 			if 'house_code' in args:
+# 				if(type(args['house_code']) == types.IntType): self.house_code = args['house_code']
+# 				else: raise TypeError("The house_code given is not an integer !")
+# 			
+# 			if 'group_code' in args:
+# 				if(type(args['group_code']) == types.IntType): self.group_code = args['group_code']
+# 				else: raise TypeError("The group_code given is not an integer !")
+# 			
+# 			if 'unit_code' in args:
+# 				if(type(args['unit_code']) == types.IntType): self.unit_code = args['unit_code']
+# 				else: raise TypeError("The unit_code given is not an integer !")
 		except Exception, e:
 			raise e
 
-	def switch_on(self):
+	def get_properties_format(self):
+		properties_format = list(self.properties_format)
+		for p in properties_format:
+			if p['type'] != 'title':
+				p['section'] = str(self.id)
+		return properties_format
+		
+
+	def switch_on(self, args):
 		""" Method called when the "on" action is triggered. 
 		On the one side, it sends the radio command accordingly.
 		On the other side, it updates the Information which 
@@ -425,7 +498,7 @@ class NexaDevice(kernel.Device):
 		self.protocol.send_command(self, 1)
 		self.update(1)
 
-	def switch_off(self):
+	def switch_off(self, args):
 		""" Method called when the "off" action is triggered. 
 		On the one side, it sends the radio command accordingly.
 		On the other side, it updates the Information which 
@@ -436,7 +509,7 @@ class NexaDevice(kernel.Device):
 		self.protocol.send_command(self, 0)
 		self.update(0)
 	
-	def sync(self):
+	def sync(self, args):
 		""" Method called when the "sync" action is triggered. 
 		It sends a series of "on" commands.
 		
@@ -446,7 +519,7 @@ class NexaDevice(kernel.Device):
 			self.switch_on({})
 			time.sleep(0.1)
 	
-	def unsync(self):
+	def unsync(self, args):
 		""" Method called when the "unsync" action is triggered. 
 		It sends a series of "off" commands.
 		
@@ -474,17 +547,17 @@ class NexaDevice(kernel.Device):
 
 #---------------------------------------------------------------
 
-class NexaRemote(kernel.Device):
+class NexaRemote(ker.Device):
 
 	# Ce sont les attributs qui caractérisent ce type de périphérique
-	device_infos = {
-				'device_name' : "Nexa Remote",
-				'device_brand' : "Nexa",
-				'device_description' : "Auto-detected Nexa remote.",
-				'arguments' : {
-							'name' : ('string', 50),
-							'description' : ('string', 1000),
-							'location' : ('string', 100),}}
+# 	device_infos = {
+# 				'device_name' : "Nexa Remote",
+# 				'device_brand' : "Nexa",
+# 				'device_description' : "Auto-detected Nexa remote.",
+# 				'arguments' : {
+# 							'name' : ('string', 50),
+# 							'description' : ('string', 1000),
+# 							'location' : ('string', 100),}}
 
 	def __init__(self, protocol, house_code, group_code, unit_code):
 		""" The constructor does not only take the protocol but also 
@@ -494,20 +567,66 @@ class NexaRemote(kernel.Device):
 		
 		"""
 		
-		self.name = None
-		self.description = None
-		self.location = None
+		self.properties = {
+						'name': u'New Nexa Device',
+						'description': '<no description>',
+						'house_code': 0,
+						'group_code': 0,
+						'unit_code': 0
+						}
 		
+		self.properties_format = [
+								{ 'type': 'title',
+								'title': 'Device configuration' },
+								{ 'type': 'string',
+								'title': 'Name',
+								'desc': 'Name of the device',
+								'key': 'name' },
+								{ 'type': 'description',
+								'title': 'Description',
+								'desc': 'Description of the device',
+								'key': 'description' },
+								{ 'type': 'numeric',
+								'title': 'House code',
+								'desc': 'Must be between 0 and 67 108 863',
+								'key': 'house_code',
+								'disabled': True },
+								{ 'type': 'numeric',
+								'title': 'Group code',
+								'desc': 'Must be either 0 or 1',
+								'key': 'group_code',
+								'disabled': True	},
+								{ 'type': 'numeric',
+								'title': 'Unit code',
+								'desc': 'Must be between 0 and 15',
+								'key': 'unit_code',
+								'disabled': True }
+								]
+		
+# 		self.name = None
+# 		self.description = None
+# 		self.location = None
+# 		
 		self.protocol = protocol
-		self.house_code = house_code
-		self.group_code = group_code
-		self.unit_code = unit_code
 		
+		self.properties['house_code'] = house_code
+		self.properties['group_code'] = group_code
+		self.properties['unit_code'] = unit_code
+
 		self.informations = []
-		self.informations. append(kernel.Information("Etat de la télécommande", 
-													"Décrit l'état de la télécommande", 
-													("state", ("on", "off"))))
+		self.informations.append(ker.Information("Etat de la télécommande",
+												"Décrit l'état de la télécommande", 
+												("state", ("on", "off"))))
 		
+		self.actions = []
+	
+	def get_properties_format(self):
+		properties_format = list(self.properties_format)
+		for p in properties_format:
+			if p['type'] != 'title':
+				p['section'] = str(self.id)
+		return properties_format
+	
 	def set(self, args):
 		""" Method enabling the user to change the name, the description and
 		the location of the device. The args must follow the format given in
@@ -515,15 +634,34 @@ class NexaRemote(kernel.Device):
 		
 		"""
 		
+		print "set"
+		python_type = {
+					'string': types.StringType,
+					'bool': types.BooleanType,
+					'numeric': types.FloatType,
+					'options': types.StringType,
+					'description': types.StringType
+					}
+		
 		try:
-			if(type(args['name']) == types.StringType): self.name = args['name']
-			else: raise TypeError("The name given is not a string !")
-			
-			if(type(args['description']) == types.StringType): self.description = args['description']
-			else: raise TypeError("The description given is not a string !")
-			
-			if(type(args['location']) == types.StringType): self.location = args['location']
-			else: raise TypeError("The location given is not a string !")
+			for k, v in args.iteritems():
+				if self.properties.has_key(k):
+					value_type = [f['type'] for f in self.properties_format if f.has_key('key') and f['key'] == k][0]
+					if k in ['house_code', 'unit_code', 'group_code']:
+						self.properties[k] = int(python_type[value_type](v))
+					else:
+						self.properties[k] = python_type[value_type](v)
+			print "fin set"
+		
+# 		try:
+# 			if(type(args['name']) == types.StringType): self.name = args['name']
+# 			else: raise TypeError("The name given is not a string !")
+# 			
+# 			if(type(args['description']) == types.StringType): self.description = args['description']
+# 			else: raise TypeError("The description given is not a string !")
+# 			
+# 			if(type(args['location']) == types.StringType): self.location = args['location']
+# 			else: raise TypeError("The location given is not a string !")
 		except Exception, e:
 			raise e
 		
@@ -558,3 +696,14 @@ class NexaRemote(kernel.Device):
 				raise ValueError("The new state was neither 0 nor 1.")
 		except Exception, e:
 			raise e
+		
+""" Set of attributes which describe the plugin, in order 
+to add it to the kernel and then be able to describe it
+to the user.  
+
+"""
+plugin_type = "protocol"
+name = "Nexa"
+description = "A protocol plugin which enables the use of Nexa-powered devices. A compatible 433 MHz modem is needed for the protocol to function."
+plugin_id = "2"
+protocol_class = Nexa    
