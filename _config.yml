@@ -1,7 +1,0 @@
-name: RVVDomoticBox
-safe: true
-lsi: false
-pygments: true
-url: "http://rvvdomoticbox.github.io"
-baseurl: /RVVDomoticBox
-markdown: redcarpet

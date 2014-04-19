@@ -1,0 +1,59 @@
+Scenario
+========
+
+.. toctree::
+
+Scenarios
+---------
+
+.. autoclass:: scenario.Scenario
+	:members:
+
+Blocks
+------
+
+.. autoclass:: scenario.Block
+	:members:
+
+.. autoclass:: scenario.SimpleBlock
+	:members:
+	
+.. autoclass:: scenario.CompositeBlock
+	:members:
+
+Nodes
++++++
+
+.. autoclass:: scenario.Node
+	:members:
+
+.. autoclass:: scenario.SimpleNode
+	:members:
+
+.. autoclass:: scenario.CompositeNode
+	:members:
+	
+Links
+-----
+
+.. autoclass:: scenario.Link
+	:members:
+
+Basic types of blocks
+---------------------
+
+.. autoclass:: scenario.Constant
+	:members:
+	
+.. autoclass:: scenario.Not
+	:members:
+	
+.. autoclass:: scenario.And
+	:members:
+
+.. autoclass:: scenario.Or
+	:members:
+
+.. autoclass:: scenario.Multiply
+	:members:
+	

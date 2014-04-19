@@ -1,0 +1,13 @@
+Protocol
+========
+
+The Protocol API
+----------------
+
+.. autoclass:: models.Protocol
+	:members:
+	
+Implementation example
+----------------------
+
+Example of implementation can be found here: :class:`protocols.nexa.Nexa` or :class:`protocols.oregon.Oregon`.

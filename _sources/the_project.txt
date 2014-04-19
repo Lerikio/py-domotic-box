@@ -1,0 +1,25 @@
+The Project
+===========
+
+Overview
+--------
+
+Features
+--------
+
+Requirements
+------------
+
+Installation
+------------
+
+References
+----------
+
+- Arduino
+
+- Python
+- pySerial
+- bitarray
+
+- Kivy

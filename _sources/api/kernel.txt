@@ -1,0 +1,5 @@
+Kernel
+======
+
+.. autoclass:: kernel.Kernel
+   :members:
